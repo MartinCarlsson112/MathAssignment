@@ -1,29 +1,11 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "OrbitingPlatform.h"
 
-// Sets default values
+
 AOrbitingPlatform::AOrbitingPlatform()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-
+ 	PrimaryActorTick.bCanEverTick = false;
 }
 
-// Called when the game starts or when spawned
-void AOrbitingPlatform::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
-
-// Called every frame
-void AOrbitingPlatform::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
 
 FRotator CombineRotators(FRotator A, FRotator B)
 {
@@ -33,37 +15,87 @@ FRotator CombineRotators(FRotator A, FRotator B)
 	return FRotator(BQuat * AQuat);
 }
 
-TArray<FVector> AOrbitingPlatform::OrbitSolve(TArray<UOrbitingPlatformComponent*> ComponentToSolve)
+void AOrbitingPlatform::OrbitSolveMultiple(TArray<UOrbitingPlatformComponent*> ComponentToSolve, FVector OrbitPivot, bool bUseVInterp, float VInterpSpeed/* = 1*/)
 {
-	TArray<FVector> Results;
 	int nSolves = ComponentToSolve.Num();
-	Results.SetNum(nSolves);
 	for (int i = 0; i < nSolves; i++)
 	{
 		if (ComponentToSolve[i] == nullptr)
 		{
 			continue;
 		}
-		float TimeX = GetWorld()->GetTimeSeconds() * ComponentToSolve[i]->SolverData.Rate.X;
-		float TimeY = GetWorld()->GetTimeSeconds() * ComponentToSolve[i]->SolverData.Rate.Y;
-		float TimeZ = GetWorld()->GetTimeSeconds() * ComponentToSolve[i]->SolverData.Rate.Z;
+		float TimeInSeconds = GetWorld()->GetTimeSeconds();
 
-		FRotator Rot = FRotator(0, (float)((int)(ComponentToSolve[i]->SolverData.Offset.X +
-			TimeX) % 360), 0);
+	
+		FVector Rate = ComponentToSolve[i]->SolverData.Rate;
 
-		FRotator RotY = FRotator(0, 0 , (float)((int)(ComponentToSolve[i]->SolverData.Offset.Y +
-			TimeY) % 360));
+		float TimeX = TimeInSeconds * Rate.X;
+		float TimeY = TimeInSeconds * Rate.Y;
+		float TimeZ = TimeInSeconds * Rate.Z;
 
-		FRotator RotZ = FRotator((float)((int)(ComponentToSolve[i]->SolverData.Offset.Z +
-			TimeZ) % 360), 0, 0);
+		FVector Offset = ComponentToSolve[i]->SolverData.Offset;
+		FVector Radius = ComponentToSolve[i]->SolverData.Radius;
 
-		FVector A = Rot.RotateVector(FVector(ComponentToSolve[i]->SolverData.Radius.X, 0, 0)), 
-		B = RotY.RotateVector(FVector(0, ComponentToSolve[i]->SolverData.Radius.Y, 0)),
-		C = RotZ.RotateVector(FVector(0, 0, ComponentToSolve[i]->SolverData.Radius.Z));
+		FRotator Rot = FRotator(0, FMath::Fmod(Offset.X + TimeX, 360), 0);
 
-		Results[i] = A + B + C;
+		FRotator RotY = FRotator(0, 0, FMath::Fmod(Offset.Y + TimeY, 360));
+
+		FRotator RotZ = FRotator(FMath::Fmod(Offset.Z + TimeZ, 360), 0, 0);
+
+		FVector A = Rot.RotateVector(FVector(Radius.X, 0, 0)),
+		B = RotY.RotateVector(FVector(0, Radius.Y, 0)),
+		C = RotZ.RotateVector(FVector(0, 0, Radius.Z));
+
+		if (bUseVInterp)
+		{
+			FVector TargetPosition = FMath::VInterpTo(ComponentToSolve[i]->GetRelativeLocation(), OrbitPivot + A + B + C, GetWorld()->GetDeltaSeconds(), VInterpSpeed);
+			ComponentToSolve[i]->SetRelativeLocation(TargetPosition, false, nullptr, ETeleportType::TeleportPhysics);
+		}
+		else
+		{
+			ComponentToSolve[i]->SetRelativeLocation(OrbitPivot + A + B + C, false, nullptr, ETeleportType::TeleportPhysics);
+		}
 	}
-	return Results;
 }
 
+void AOrbitingPlatform::OrbitSolve(UOrbitingPlatformComponent* ComponentToSolve, FVector OrbitPivot /*= FVector(0, 0, 0)*/, bool bUseVInterp /*= true*/, float VInterpSpeed /*= 1*/)
+{
+	if (ComponentToSolve == nullptr)
+	{
+		return;
+	}
+	float TimeInSeconds = GetWorld()->GetTimeSeconds();
+
+	FVector Rate = ComponentToSolve->SolverData.Rate;
+
+	float TimeX = TimeInSeconds * Rate.X;
+	float TimeY = TimeInSeconds * Rate.Y;
+	float TimeZ = TimeInSeconds * Rate.Z;
+
+	FVector Offset = ComponentToSolve->SolverData.Offset;
+	FVector Radius = ComponentToSolve->SolverData.Radius;
+
+	FRotator Rot = FRotator(0, (float)((int)(Offset.X +
+		TimeX) % 360), 0);
+
+	FRotator RotY = FRotator(0, 0, (float)((int)(Offset.Y +
+		TimeY) % 360));
+
+	FRotator RotZ = FRotator((float)((int)(Offset.Z +
+		TimeZ) % 360), 0, 0);
+
+	FVector A = Rot.RotateVector(FVector(Radius.X, 0, 0)),
+		B = RotY.RotateVector(FVector(0, Radius.Y, 0)),
+		C = RotZ.RotateVector(FVector(0, 0, Radius.Z));
+
+	if (bUseVInterp)
+	{
+		FVector TargetPosition = FMath::VInterpTo(ComponentToSolve->GetRelativeLocation(), OrbitPivot + A + B + C, GetWorld()->GetDeltaSeconds(), VInterpSpeed);
+		ComponentToSolve->SetRelativeLocation(TargetPosition, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+	else
+	{
+		ComponentToSolve->SetRelativeLocation(OrbitPivot + A + B + C, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+}
 
