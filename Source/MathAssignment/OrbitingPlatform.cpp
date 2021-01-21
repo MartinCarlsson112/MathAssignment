@@ -25,16 +25,41 @@ void AOrbitingPlatform::Tick(float DeltaTime)
 
 }
 
-FVector AOrbitingPlatform::OrbitSolve(float Radius, float Offset, float Rate)
+FRotator CombineRotators(FRotator A, FRotator B)
 {
-	float Time = GetWorld()->GetTimeSeconds() * Rate;
+	FQuat AQuat = FQuat(A);
+	FQuat BQuat = FQuat(B);
 
-	FRotator Rot = FRotator(0, (float)((int)(Offset +
-		Time) % 360), 0);
-
-	FVector RotatedVector = Rot.RotateVector(FVector(Radius, 0, 0));
-
-
-	return	RotatedVector;
+	return FRotator(BQuat * AQuat);
 }
+
+TArray<FVector> AOrbitingPlatform::OrbitSolve(TArray<UOrbitingPlatformComponent*> ComponentToSolve)
+{
+	TArray<FVector> Results;
+	int nSolves = ComponentToSolve.Num();
+	Results.SetNum(nSolves);
+	for (int i = 0; i < nSolves; i++)
+	{
+		if (ComponentToSolve[i] == nullptr)
+		{
+			continue;
+		}
+		float TimeX = GetWorld()->GetTimeSeconds() * ComponentToSolve[i]->SolverData.Rate.X;
+		float TimeY = GetWorld()->GetTimeSeconds() * ComponentToSolve[i]->SolverData.Rate.Y;
+
+		FRotator Rot = FRotator(0, (float)((int)(ComponentToSolve[i]->SolverData.Offset.X +
+			TimeX) % 360), 0);
+
+		FRotator RotY = FRotator(0, 0 , (float)((int)(ComponentToSolve[i]->SolverData.Offset.Y +
+			TimeY) % 360));
+
+		
+		FVector A = Rot.RotateVector(FVector(ComponentToSolve[i]->SolverData.Radius.X, 0, 0)), 
+		B = RotY.RotateVector(FVector(0, ComponentToSolve[i]->SolverData.Radius.Y, 0));
+
+		Results[i] = A + B;
+	}
+	return Results;
+}
+
 

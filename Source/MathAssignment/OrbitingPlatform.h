@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "OrbitingPlatformComponent.h"
 #include "OrbitingPlatform.generated.h"
 
-UCLASS()
+UCLASS(BlueprintType, Blueprintable)
 class MATHASSIGNMENT_API AOrbitingPlatform : public AActor
 {
 	GENERATED_BODY()
@@ -23,10 +24,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-
-	UFUNCTION(BlueprintCallable)
-	FVector OrbitSolve(float Radius, float Offset, float Rate);
-
-
+	UFUNCTION(BlueprintCallable, Category = Orbit)
+	TArray<FVector> OrbitSolve(TArray<UOrbitingPlatformComponent*> ComponentToSolve);
 
 };
