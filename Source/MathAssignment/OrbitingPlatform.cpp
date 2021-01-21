@@ -66,6 +66,7 @@ void AOrbitingPlatform::OrbitSolve(UOrbitingPlatformComponent* ComponentToSolve,
 	}
 	float TimeInSeconds = GetWorld()->GetTimeSeconds();
 
+
 	FVector Rate = ComponentToSolve->SolverData.Rate;
 
 	float TimeX = TimeInSeconds * Rate.X;
@@ -75,14 +76,11 @@ void AOrbitingPlatform::OrbitSolve(UOrbitingPlatformComponent* ComponentToSolve,
 	FVector Offset = ComponentToSolve->SolverData.Offset;
 	FVector Radius = ComponentToSolve->SolverData.Radius;
 
-	FRotator Rot = FRotator(0, (float)((int)(Offset.X +
-		TimeX) % 360), 0);
+	FRotator Rot = FRotator(0, FMath::Fmod(Offset.X + TimeX, 360), 0);
 
-	FRotator RotY = FRotator(0, 0, (float)((int)(Offset.Y +
-		TimeY) % 360));
+	FRotator RotY = FRotator(0, 0, FMath::Fmod(Offset.Y + TimeY, 360));
 
-	FRotator RotZ = FRotator((float)((int)(Offset.Z +
-		TimeZ) % 360), 0, 0);
+	FRotator RotZ = FRotator(FMath::Fmod(Offset.Z + TimeZ, 360), 0, 0);
 
 	FVector A = Rot.RotateVector(FVector(Radius.X, 0, 0)),
 		B = RotY.RotateVector(FVector(0, Radius.Y, 0)),
