@@ -24,7 +24,11 @@ public:
 
 	//Solve IK using FABRIK algorithm
 	UFUNCTION(BlueprintCallable, Category = IK)
-	static bool SolveIKChainFABRIK(const FIKChain2& IKChain);
+	static void SolveIKChainFABRIK(const FIKChain2& IKChain);
+
+	UFUNCTION()
+	static void SolveFabrikRotations(const FIKChain2& IKChain);
+
 
 	UFUNCTION(BlueprintCallable, Category = IK)
 	static FIKChain2 CreateIKChain(TArray<UIKComponent*> Bones, const FVector& Start, const FVector& Target);
