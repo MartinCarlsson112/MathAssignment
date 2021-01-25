@@ -22,13 +22,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = IK)
 	static void SolveIKChainMultiCCD(const TArray<FIKChain2>& IKChain, float Threshold = 0.0001f, int Steps = 15);
 
-
 	//Solve IK using FABRIK algorithm
 	UFUNCTION(BlueprintCallable, Category = IK)
 	static bool SolveIKChainFABRIK(const FIKChain2& IKChain);
 
-
 	UFUNCTION(BlueprintCallable, Category = IK)
 	static FIKChain2 CreateIKChain(TArray<UIKComponent*> Bones, const FVector& Start, const FVector& Target);
 
+	UFUNCTION(BlueprintCallable, Category = IK)
+	static bool IsIKChainValid(FIKChain2 Chain)
+	{
+		for (int i = 0; i < Chain.Chain.Num(); i++)
+		{
+			if (Chain.Chain[i] == nullptr)
+			{
+				return false;
+			}
+		}
+		return Chain.Chain.Num() > 0;
+	}
 };

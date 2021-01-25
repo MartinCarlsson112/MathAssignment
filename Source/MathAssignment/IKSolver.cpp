@@ -26,12 +26,18 @@ static FVector GetGlobalPosition(const FIKChain2& IKChain, int Index)
 	return WorldTransform.GetLocation() + End;
 }
 
+
+
 bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, float Threshold /* = 0.0001f*/, int Steps/*= 15*/)
 {
-	if (!(IKChain.Chain.Num() > 0))
+	bool ValidIKChain = IsIKChainValid(IKChain);
+
+	ensure(ValidIKChain);
+	if (!ValidIKChain)
 	{
 		return false;
 	}
+
 	int Size = IKChain.Chain.Num();
 	int Last = IKChain.Chain.Num() - 1;
 

@@ -22,4 +22,5 @@ struct MATHASSIGNMENT_API FIKChain2
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = IK)
 	FVector Target;
+
 };
