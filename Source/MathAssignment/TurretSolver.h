@@ -25,5 +25,4 @@ class MATHASSIGNMENT_API UTurretSolver : public UObject
 		return PredictedPosition - FirePosition;
 	}
 
-
 };

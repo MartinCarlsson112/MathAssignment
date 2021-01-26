@@ -18,9 +18,6 @@ struct MATHASSIGNMENT_API FIKChain2
 	float TotalLength;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = IK)
-	FVector Start;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = IK)
-	FVector Target;
+	USceneComponent* Start;
 
 };

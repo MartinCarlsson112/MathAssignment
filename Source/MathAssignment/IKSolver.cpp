@@ -105,7 +105,7 @@ FQuat LookRotation(FVector lookAt, FVector upDirection)
 
 
 
-bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, float Threshold /* = 0.0001f*/, int Steps/*= 15*/)
+bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold /* = 0.0001f*/, int Steps/*= 15*/)
 {
 	bool ValidIKChain = IsIKChainValid(IKChain);
 
@@ -119,7 +119,7 @@ bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, float Threshold /* = 0
 	int Last = IKChain.Chain.Num() - 1;
 
 	float ThresholdSq = Threshold * Threshold;
-	FVector Goal = IKChain.Target;
+	FVector Goal = TargetPoint->GetComponentLocation();
 
 	for (int i = 0; i < Steps; i++)
 	{
@@ -171,19 +171,25 @@ bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, float Threshold /* = 0
 	return false;
 }
 
-void UIKSolver::SolveIKChainMultiCCD(const TArray<FIKChain2>& IKChain, float Threshold /*= 0.0001f*/, int Steps /*= 15*/)
+void UIKSolver::SolveIKChainMultiCCD(const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold /*= 0.0001f*/, int Steps /*= 15*/)
 {
 	for (int i = 0; i < IKChain.Num(); i++)
 	{
-		SolveIKChainCCD(IKChain[i], Threshold, Steps);
+		SolveIKChainCCD(IKChain[i], TargetPoint, Threshold, Steps);
 	}
 }
 
-void UIKSolver::SolveIKChainFABRIK(const FIKChain2& IKChain)
+void UIKSolver::SolveIKChainFABRIK(const FIKChain2& IKChain, USceneComponent* TargetPoint)
 {
+	bool ValidIKChain = IsIKChainValid(IKChain);
+	ensure(ValidIKChain);
+	if (!ValidIKChain)
+	{
+		return;
+	}
 	TArray<FTransform> ChainTransforms;
-	FVector StartPosition = IKChain.Start;
-	IKChain.Chain[IKChain.Size-1]->SetWorldLocation(IKChain.Target);
+	FVector StartPosition = IKChain.Start->GetComponentLocation();
+	IKChain.Chain[IKChain.Size-1]->SetWorldLocation(TargetPoint->GetComponentLocation());
 
 	for (int i = IKChain.Size - 2; i >= 0 ; --i)
 	{
@@ -211,10 +217,10 @@ void UIKSolver::SolveIKChainFABRIK(const FIKChain2& IKChain)
 
 		IKChain.Chain[i]->SetWorldLocation(Prev + Offset);
 	}
-	SolveFabrikRotations(IKChain);
+	SolveFabrikRotations(IKChain, TargetPoint);
 }
 
-void UIKSolver::SolveFabrikRotations(const FIKChain2& IKChain)
+void UIKSolver::SolveFabrikRotations(const FIKChain2& IKChain, USceneComponent* TargetPoint)
 {
 	FQuat ToRot = FQuat();
 	for (int i = 0; i < IKChain.Size - 1; i++)
@@ -223,9 +229,11 @@ void UIKSolver::SolveFabrikRotations(const FIKChain2& IKChain)
 		IKChain.Chain[i]->SetWorldRotation(ToRot);
 	}
 
-	if (FVector::Distance(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation(), IKChain.Target) > IKChain.Chain[IKChain.Size - 1]->IKData.Length)
+	FVector TargetPos = TargetPoint->GetComponentLocation();
+
+	if (FVector::Distance(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation(), TargetPos) > IKChain.Chain[IKChain.Size - 1]->IKData.Length)
 	{
-		ToRot = LookRotation(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation() - IKChain.Target, FVector(0, 0, 1));
+		ToRot = LookRotation(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation() - TargetPos, FVector(0, 0, 1));
 		IKChain.Chain[IKChain.Size - 1]->SetWorldRotation(ToRot);
 	}
 	else
@@ -234,7 +242,7 @@ void UIKSolver::SolveFabrikRotations(const FIKChain2& IKChain)
 	}
 }
 
-FIKChain2 UIKSolver::CreateIKChain(TArray<UIKComponent*> Bones, const FVector& Start, const FVector& Target)
+FIKChain2 UIKSolver::CreateIKChain(TArray<UIKComponent*> Bones, USceneComponent* Start)
 {
 	FIKChain2 Chain;
 
@@ -245,7 +253,6 @@ FIKChain2 UIKSolver::CreateIKChain(TArray<UIKComponent*> Bones, const FVector& S
 		Chain.Chain.Add(Bones[i]);
 	}
 	Chain.Start = Start;
-	Chain.Target = Target;
 	Chain.Size = Size;
 	Chain.TotalLength = 0;
 	return Chain;

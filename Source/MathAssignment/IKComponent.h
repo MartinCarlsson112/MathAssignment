@@ -6,7 +6,7 @@
 #include "IKComponent.Generated.h"
 
 
-UCLASS( ClassGroup=(IK), meta=(BlueprintSpawnableComponent) )
+UCLASS(Blueprintable, BlueprintType, ClassGroup=(IK), meta=(BlueprintSpawnableComponent) )
 class MATHASSIGNMENT_API UIKComponent : public UStaticMeshComponent
 {
 	GENERATED_BODY()
