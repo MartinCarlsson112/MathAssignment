@@ -36,7 +36,7 @@ public:
 	}
 
 	UFUNCTION(BlueprintCallable, Category = Orbit)
-		static void OrbitSolveMultiple(TArray<UOrbitComponent*> ComponentToSolve, FVector OrbitPivot, float time)
+	static void OrbitSolveMultiple(TArray<UOrbitComponent*> ComponentToSolve, FVector OrbitPivot, float time)
 	{
 		int nSolves = ComponentToSolve.Num();
 		for (int i = 0; i < nSolves; i++)
