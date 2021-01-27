@@ -13,7 +13,11 @@ class MATHASSIGNMENT_API UTurretSolver : public UObject
 	UFUNCTION(BlueprintCallable, Category = Turret, meta = (WorldContext = "WorldContextObject"))
 	static FVector PredictionSolver(UObject* WorldContextObject, FVector FirePosition, FVector TargetPosition, FVector TargetVelocity, float BulletSpeed, bool DebugDraw = false)
 	{
-		UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject);
+		UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull);
+		if (!World)
+		{
+			return FVector::ZeroVector;
+		}
 		float Distance = (FirePosition - TargetPosition).Size();
 		float Time = Distance / BulletSpeed;
 		FVector PredictedPosition = TargetPosition + (TargetVelocity * Time);

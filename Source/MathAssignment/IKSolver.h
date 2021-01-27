@@ -15,12 +15,12 @@ class MATHASSIGNMENT_API UIKSolver : public UObject
 public:	
 
 	//Solve IK using CCD Algorithm
-	UFUNCTION(BlueprintCallable, Category = IK)
-	static bool SolveIKChainCCD(const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15);
+	UFUNCTION(BlueprintCallable, Category = IK, meta = (WorldContext = "WorldContextObject"))
+	static bool SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15);
 
 	//Solve IK using CCD Algorithm
-	UFUNCTION(BlueprintCallable, Category = IK)
-	static void SolveIKChainMultiCCD(const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15);
+	UFUNCTION(BlueprintCallable, Category = IK, meta = (WorldContext = "WorldContextObject"))
+	static void SolveIKChainMultiCCD(UObject* WorldContextObject, const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15);
 
 	//Solve IK using FABRIK algorithm
 	UFUNCTION(BlueprintCallable, Category = IK)
@@ -29,7 +29,10 @@ public:
 	UFUNCTION()
 	static void SolveFabrikRotations(const FIKChain2& IKChain, USceneComponent* TargetPoint);
 
-
+	UFUNCTION(BlueprintCallable, Category = IK, meta = (WorldContext = "WorldContextObject"))
+	static bool StepSolver(UObject* WorldContextObject, USceneComponent* TargetPoint, USceneComponent* PolePoint, const FVector BasePosition, float Threshold, AActor* IgnoredActor, FVector & NewPosition, bool bDebug);
+	
+	
 	UFUNCTION(BlueprintCallable, Category = IK)
 	static FIKChain2 CreateIKChain(TArray<UIKComponent*> Bones, USceneComponent* Start);
 

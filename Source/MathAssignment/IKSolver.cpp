@@ -1,10 +1,46 @@
 #include "IKSolver.h"
 #include "Kismet/KismetMathLibrary.h"
-
+#include "DrawDebugHelpers.h"
 static FTransform Combine(const FTransform& A, const FTransform& B)
 {
 	return A + B;
 }
+
+static FVector GetBoneEnd(const UIKComponent* Component)
+{
+	return Component->GetComponentLocation() - Component->GetUpVector() * Component->IKData.Length;
+}
+
+static FQuat FromTo(const FVector& From, const FVector& To)
+{
+	FVector F = From.GetSafeNormal(), T = To.GetSafeNormal();
+	
+	if (F.Equals(T))
+	{
+		return FQuat();	
+	}
+	else if (F.Equals(T * -1.0f))
+	{
+		FVector Orthographic = FVector(1, 0, 0);
+		if (FMath::Abs(F.Y) < FMath::Abs(F.X))
+		{
+			Orthographic = FVector(0, 1, 0);
+		}
+
+		if (FMath::Abs(F.Y) < FMath::Abs(F.Z) && FMath::Abs(F.Y) < FMath::Abs(F.X))
+		{
+			Orthographic = FVector(0, 0, 1);
+		}
+		FVector Axis = FVector::CrossProduct(F, Orthographic).GetSafeNormal();
+		return FQuat(Axis.Z, Axis.X, Axis.Y, 0);
+	}
+
+	FVector Half = (F + T).GetSafeNormal();
+	FVector Axis = FVector::CrossProduct(F, Half);
+	return FQuat(Axis.Z, Axis.X, Axis.Y, FVector::DotProduct(F, Half));
+}
+
+
 
 static FTransform GetGlobalTransform(const FIKChain2& IKChain, int Index)
 {
@@ -23,8 +59,7 @@ static FTransform GetGlobalTransform(const FIKChain2& IKChain, int Index)
 static FVector GetGlobalPosition(const FIKChain2& IKChain, int Index)
 {
 	FTransform WorldTransform = GetGlobalTransform(IKChain, Index);
-	FVector End = WorldTransform.GetRotation().RotateVector(FVector(IKChain.Chain[Index]->IKData.Length, 0, 0));
-	return WorldTransform.GetLocation() + End;
+	return WorldTransform.GetLocation();
 }
 
 
@@ -105,10 +140,14 @@ FQuat LookRotation(FVector lookAt, FVector upDirection)
 
 
 
-bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold /* = 0.0001f*/, int Steps/*= 15*/)
+bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold /* = 0.0001f*/, int Steps/*= 15*/)
 {
 	bool ValidIKChain = IsIKChainValid(IKChain);
-
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull);
+	if (!World)
+	{
+		return false;
+	}
 	ensure(ValidIKChain);
 	if (!ValidIKChain)
 	{
@@ -117,65 +156,64 @@ bool UIKSolver::SolveIKChainCCD(const FIKChain2& IKChain, USceneComponent* Targe
 
 	int Size = IKChain.Chain.Num();
 	int Last = IKChain.Chain.Num() - 1;
-
-	float ThresholdSq = Threshold * Threshold;
-	FVector Goal = TargetPoint->GetComponentLocation();
+	float ThresholdSquare = Threshold * Threshold;
+	FVector TargetPosition = TargetPoint->GetComponentLocation();
+	//DrawDebugSphere(World, TargetPosition, 30, 16, FColor::Red, true, 1.0f);
 
 	for (int i = 0; i < Steps; i++)
 	{
-		FVector Effector = GetGlobalPosition(IKChain, Last);
-		if (FVector::DistSquared(Goal, Effector) < ThresholdSq)
+		FVector EndEffector = GetBoneEnd(IKChain.Chain[Last]);
+		///DrawDebugSphere(World, EndEffector, 30, 16, FColor::Yellow, true, 1.0f);
+
+		if (FVector::DistSquared(TargetPosition, EndEffector) < ThresholdSquare)
 		{
+			//GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Already Solved!"));
+			//already solved
 			return true;
 		}
 
-		//Solve iterations
-		for (int j = Size - 1; j >= 0; --j)
+		for(int j = Size - 1; j >= 0; j--)
 		{
-			Effector = GetGlobalPosition(IKChain, Last);
+			EndEffector = GetBoneEnd(IKChain.Chain[Last]);
 
-			FTransform World = GetGlobalTransform(IKChain, j);
-			FVector Position = World.GetLocation();
-			FQuat Rotation = World.GetRotation();
+			FVector WorldPosition = IKChain.Chain[j]->GetComponentLocation();
+			FQuat WorldRotation = IKChain.Chain[j]->GetComponentRotation().Quaternion();
 
-			//find a vector from the position of the joint to the end effector position
-			FVector ToEffector = Effector - Position;
 
-			//find another vector from the position of the current joint to the position of the goal
-			FVector ToGoal = Goal - Position;
+			FVector ToEffector = EndEffector - WorldPosition;
+			//DrawDebugLine(World, WorldPosition, WorldPosition + ToEffector.GetSafeNormal()* 100.0f, FColor::Yellow, true, 1.0f, 10);
 
-			FQuat EffectorToGoal;
-			if (FVector::DistSquared(Goal, Position) > ThresholdSq)
-			{		
-				//find a quat that rotates from the position to effector vector to the position of goal 
-				EffectorToGoal = FQuat::FindBetween(ToEffector, ToGoal);
+			FVector ToTarget = TargetPosition - WorldPosition;
+			//DrawDebugLine(World, WorldPosition, WorldPosition + ToTarget.GetSafeNormal() * 100.0f, FColor::Red, true, 1.0f, 10);
 
-				//rotate the world space orientation of the joint by the inverse of the joint's previous world rotation to move the quaternion back into the joint space
-				FQuat WorldRotated = Rotation * EffectorToGoal;
-				FQuat LocalRotate = WorldRotated * Rotation.Inverse();
+			if (ToTarget.SizeSquared() > ThresholdSquare)
+			{
+				FQuat PositionToGoal = LookRotation(-ToTarget, FVector(0, -1, 0));
+				FQuat PositionToEffector = LookRotation(-ToEffector, FVector(0, -1, 0));
 
-				IKChain.Chain[j]->SetRelativeRotation(LocalRotate * Rotation);
-				//as the joint moves, check how close the end effector moved to the goal at each iteration
+				//DrawDebugLine(World, WorldPosition, WorldPosition +  EffectorToGoal.Vector() * 100.0f, FColor::Blue, true, 1.0f, 10);
 
-				Effector = GetGlobalPosition(IKChain, Last);
-				//if close enough return true
-				if (FVector::DistSquared(Effector, Goal) < ThresholdSq)
-				{
+				IKChain.Chain[j]->SetWorldRotation(PositionToEffector);
+
+
+				EndEffector = GetBoneEnd(IKChain.Chain[Last]);
+				if (FVector::DistSquared(TargetPosition, EndEffector) < ThresholdSquare)
+				{	
+					//GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Success!"));
 					return true;
 				}
 			}
 		}
-		return false;
 	}
-
+	//GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Fail!"));
 	return false;
 }
 
-void UIKSolver::SolveIKChainMultiCCD(const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold /*= 0.0001f*/, int Steps /*= 15*/)
+void UIKSolver::SolveIKChainMultiCCD(UObject* WorldContextObject, const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold /*= 0.0001f*/, int Steps /*= 15*/)
 {
 	for (int i = 0; i < IKChain.Num(); i++)
 	{
-		SolveIKChainCCD(IKChain[i], TargetPoint, Threshold, Steps);
+		SolveIKChainCCD(WorldContextObject, IKChain[i], TargetPoint, Threshold, Steps);
 	}
 }
 
@@ -241,6 +279,43 @@ void UIKSolver::SolveFabrikRotations(const FIKChain2& IKChain, USceneComponent* 
 		IKChain.Chain[IKChain.Size - 1]->SetWorldRotation(ToRot);
 	}
 }
+
+bool UIKSolver::StepSolver(UObject* WorldContextObject, USceneComponent* TargetPoint, USceneComponent* PolePoint, const FVector BasePosition, float Threshold, AActor* IgnoredActor, FVector& NewPosition, bool bDebug)
+{
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull);
+	if (!World)
+	{
+		return false;
+	}
+	FVector PolePosition = PolePoint->GetComponentLocation();
+	float Dist = FVector::Distance(TargetPoint->GetComponentLocation(), PolePosition);
+	if (Dist > Threshold)
+	{
+		FHitResult HitResult;
+		if (bDebug)
+		{
+			DrawDebugLine(World, BasePosition, PolePosition, FColor::Red, true, 0.5f);
+
+		}
+
+
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(IgnoredActor);
+		if (World->LineTraceSingleByChannel(HitResult, BasePosition, PolePosition, ECC_Visibility, Params))
+		{
+			if (bDebug)
+			{
+				DrawDebugSphere(World, HitResult.Location, 30, 26, FColor(181, 0, 0), false, 0.5f, 0, 2);
+				//draw hit point
+			}
+
+			NewPosition = HitResult.Location;
+			return true;
+		}
+	}
+	return false;
+}
+
 
 FIKChain2 UIKSolver::CreateIKChain(TArray<UIKComponent*> Bones, USceneComponent* Start)
 {
