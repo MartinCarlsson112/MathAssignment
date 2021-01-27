@@ -32,12 +32,12 @@ static FQuat FromTo(const FVector& From, const FVector& To)
 			Orthographic = FVector(0, 0, 1);
 		}
 		FVector Axis = FVector::CrossProduct(F, Orthographic).GetSafeNormal();
-		return FQuat(Axis.Z, Axis.X, Axis.Y, 0);
+		return FQuat(Axis.X, Axis.Y, Axis.Z, 0);
 	}
 
 	FVector Half = (F + T).GetSafeNormal();
 	FVector Axis = FVector::CrossProduct(F, Half);
-	return FQuat(Axis.Z, Axis.X, Axis.Y, FVector::DotProduct(F, Half));
+	return FQuat(Axis.X, Axis.Y, Axis.Z, FVector::DotProduct(F, Half));
 }
 
 
@@ -140,7 +140,7 @@ FQuat LookRotation(FVector lookAt, FVector upDirection)
 
 
 
-bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold /* = 0.0001f*/, int Steps/*= 15*/)
+bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold /* = 0.0001f*/, int Steps/*= 15*/, bool bDebug /*= false*/)
 {
 	bool ValidIKChain = IsIKChainValid(IKChain);
 	UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull);
@@ -188,12 +188,15 @@ bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IK
 
 			if (ToTarget.SizeSquared() > ThresholdSquare)
 			{
-				FQuat PositionToGoal = LookRotation(-ToTarget, FVector(0, -1, 0));
-				FQuat PositionToEffector = LookRotation(-ToEffector, FVector(0, -1, 0));
+				FQuat EffectorToTarget = FromTo(ToEffector, ToTarget);
 
 				//DrawDebugLine(World, WorldPosition, WorldPosition +  EffectorToGoal.Vector() * 100.0f, FColor::Blue, true, 1.0f, 10);
 
-				IKChain.Chain[j]->SetWorldRotation(PositionToEffector);
+				FQuat WorldRotated = WorldRotation * EffectorToTarget;
+				FQuat LocalRotated = WorldRotated * WorldRotation.Inverse();
+
+
+				IKChain.Chain[j]->SetWorldRotation(LocalRotated * WorldRotation);
 
 
 				EndEffector = GetBoneEnd(IKChain.Chain[Last]);
@@ -209,11 +212,11 @@ bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IK
 	return false;
 }
 
-void UIKSolver::SolveIKChainMultiCCD(UObject* WorldContextObject, const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold /*= 0.0001f*/, int Steps /*= 15*/)
+void UIKSolver::SolveIKChainMultiCCD(UObject* WorldContextObject, const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold /*= 0.0001f*/, int Steps /*= 15*/, bool bDebug /*= false*/)
 {
 	for (int i = 0; i < IKChain.Num(); i++)
 	{
-		SolveIKChainCCD(WorldContextObject, IKChain[i], TargetPoint, Threshold, Steps);
+		SolveIKChainCCD(WorldContextObject, IKChain[i], TargetPoint, Threshold, Steps, bDebug);
 	}
 }
 

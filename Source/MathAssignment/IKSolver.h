@@ -16,11 +16,11 @@ public:
 
 	//Solve IK using CCD Algorithm
 	UFUNCTION(BlueprintCallable, Category = IK, meta = (WorldContext = "WorldContextObject"))
-	static bool SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15);
+	static bool SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15, bool bDebug = false);
 
 	//Solve IK using CCD Algorithm
 	UFUNCTION(BlueprintCallable, Category = IK, meta = (WorldContext = "WorldContextObject"))
-	static void SolveIKChainMultiCCD(UObject* WorldContextObject, const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15);
+	static void SolveIKChainMultiCCD(UObject* WorldContextObject, const TArray<FIKChain2>& IKChain, USceneComponent* TargetPoint, float Threshold = 0.0001f, int Steps = 15, bool bDebug = false);
 
 	//Solve IK using FABRIK algorithm
 	UFUNCTION(BlueprintCallable, Category = IK)
