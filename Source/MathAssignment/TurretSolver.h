@@ -17,7 +17,7 @@ class MATHASSIGNMENT_API UTurretSolver : public UObject
 		if (!World)
 		{
 			return FVector::ZeroVector;
-		}
+		}	
 		float Distance = (FirePosition - TargetPosition).Size();
 		float Time = Distance / BulletSpeed;
 		FVector PredictedPosition = TargetPosition + (TargetVelocity * Time);

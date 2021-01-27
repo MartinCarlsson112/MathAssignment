@@ -158,17 +158,21 @@ bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IK
 	int Last = IKChain.Chain.Num() - 1;
 	float ThresholdSquare = Threshold * Threshold;
 	FVector TargetPosition = TargetPoint->GetComponentLocation();
-	//DrawDebugSphere(World, TargetPosition, 30, 16, FColor::Red, true, 1.0f);
-
+	if (bDebug)
+	{
+		DrawDebugSphere(World, TargetPosition, 30, 16, FColor::Red, true);
+	}
+	FVector EndEffector = GetBoneEnd(IKChain.Chain[Last]);
+	if (bDebug)
+	{
+		DrawDebugSphere(World, EndEffector, 30, 16, FColor::Yellow, true);
+	}
 	for (int i = 0; i < Steps; i++)
 	{
-		FVector EndEffector = GetBoneEnd(IKChain.Chain[Last]);
-		///DrawDebugSphere(World, EndEffector, 30, 16, FColor::Yellow, true, 1.0f);
-
+		EndEffector = GetBoneEnd(IKChain.Chain[Last]);
 		if (FVector::DistSquared(TargetPosition, EndEffector) < ThresholdSquare)
 		{
-			//GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Already Solved!"));
-			//already solved
+			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Already Solved!"));
 			return true;
 		}
 
@@ -181,34 +185,41 @@ bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IK
 
 
 			FVector ToEffector = EndEffector - WorldPosition;
-			//DrawDebugLine(World, WorldPosition, WorldPosition + ToEffector.GetSafeNormal()* 100.0f, FColor::Yellow, true, 1.0f, 10);
+
+			if (bDebug)
+			{
+				DrawDebugLine(World, WorldPosition, WorldPosition + ToEffector.GetSafeNormal() * 100.0f, FColor::Yellow, true);
+			}
 
 			FVector ToTarget = TargetPosition - WorldPosition;
-			//DrawDebugLine(World, WorldPosition, WorldPosition + ToTarget.GetSafeNormal() * 100.0f, FColor::Red, true, 1.0f, 10);
+
+			if (bDebug)
+			{
+				DrawDebugLine(World, WorldPosition, WorldPosition + ToTarget.GetSafeNormal() * 100.0f, FColor::Red, true);
+			}
 
 			if (ToTarget.SizeSquared() > ThresholdSquare)
 			{
 				FQuat EffectorToTarget = FromTo(ToEffector, ToTarget);
 
-				//DrawDebugLine(World, WorldPosition, WorldPosition +  EffectorToGoal.Vector() * 100.0f, FColor::Blue, true, 1.0f, 10);
+				if (bDebug)
+				{
+					DrawDebugLine(World, WorldPosition, WorldPosition + EffectorToTarget.GetForwardVector() * 100.0f, FColor::Blue, true);
+				}
 
 				FQuat WorldRotated = WorldRotation * EffectorToTarget;
 				FQuat LocalRotated = WorldRotated * WorldRotation.Inverse();
 
-
 				IKChain.Chain[j]->SetWorldRotation(LocalRotated * WorldRotation);
-
 
 				EndEffector = GetBoneEnd(IKChain.Chain[Last]);
 				if (FVector::DistSquared(TargetPosition, EndEffector) < ThresholdSquare)
 				{	
-					//GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Success!"));
 					return true;
 				}
 			}
 		}
 	}
-	//GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Fail!"));
 	return false;
 }
 
@@ -309,7 +320,6 @@ bool UIKSolver::StepSolver(UObject* WorldContextObject, USceneComponent* TargetP
 			if (bDebug)
 			{
 				DrawDebugSphere(World, HitResult.Location, 30, 26, FColor(181, 0, 0), false, 0.5f, 0, 2);
-				//draw hit point
 			}
 
 			NewPosition = HitResult.Location;
