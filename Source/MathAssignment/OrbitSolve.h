@@ -21,6 +21,21 @@ class MATHASSIGNMENT_API UOrbitSolver : public UObject
 public:
 
 	UFUNCTION(BlueprintCallable, Category = Orbit)
+	static void RotationSolve(TArray<UOrbitComponent*> ComponentToSolve, FVector Speed, float Time)
+	{
+		int nSolves = ComponentToSolve.Num();
+		for (int i = 0; i < nSolves; i++)
+		{
+			if (ComponentToSolve[i] == nullptr)
+			{
+				continue;
+			}
+			FRotator OldRotation = ComponentToSolve[i]->GetRelativeRotation();
+			ComponentToSolve[i]->SetRelativeRotation(FRotator(OldRotation.Vector().X + Speed.X * Time, OldRotation.Vector().Y + Speed.Y * Time, OldRotation.Vector().Z + Speed.Z * Time ));
+		}
+	}
+
+	UFUNCTION(BlueprintCallable, Category = Orbit)
 		static void OrbitSolveMultiple(TArray<UOrbitComponent*> ComponentToSolve, FVector OrbitPivot, float time)
 	{
 		int nSolves = ComponentToSolve.Num();
