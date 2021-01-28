@@ -172,7 +172,6 @@ bool UIKSolver::SolveIKChainCCD(UObject* WorldContextObject, const FIKChain2& IK
 		EndEffector = GetBoneEnd(IKChain.Chain[Last]);
 		if (FVector::DistSquared(TargetPosition, EndEffector) < ThresholdSquare)
 		{
-			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.0f, FColor::Cyan, FString("Already Solved!"));
 			return true;
 		}
 
@@ -241,8 +240,9 @@ void UIKSolver::SolveIKChainFABRIK(const FIKChain2& IKChain, USceneComponent* Ta
 	}
 	TArray<FTransform> ChainTransforms;
 	FVector StartPosition = IKChain.Start->GetComponentLocation();
-	IKChain.Chain[IKChain.Size-1]->SetWorldLocation(TargetPoint->GetComponentLocation());
 
+
+	IKChain.Chain[IKChain.Size - 1]->SetWorldLocation(TargetPoint->GetComponentLocation());
 	for (int i = IKChain.Size - 2; i >= 0 ; --i)
 	{
 		FVector Current = IKChain.Chain[i]->GetComponentLocation();
@@ -283,15 +283,16 @@ void UIKSolver::SolveFabrikRotations(const FIKChain2& IKChain, USceneComponent* 
 
 	FVector TargetPos = TargetPoint->GetComponentLocation();
 
-	if (FVector::Distance(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation(), TargetPos) > IKChain.Chain[IKChain.Size - 1]->IKData.Length)
-	{
+	//if (FVector::Distance(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation(), TargetPos) > IKChain.Chain[IKChain.Size - 1]->IKData.Length)
+	//{
 		ToRot = LookRotation(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation() - TargetPos, FVector(0, 0, 1));
 		IKChain.Chain[IKChain.Size - 1]->SetWorldRotation(ToRot);
-	}
-	else
-	{
-		IKChain.Chain[IKChain.Size - 1]->SetWorldRotation(ToRot);
-	}
+	//}
+	//else
+	//{
+	//	ToRot = LookRotation(IKChain.Chain[IKChain.Size - 1]->GetComponentLocation() - TargetPos, FVector(0, 0, 1));
+	//	IKChain.Chain[IKChain.Size - 1]->SetWorldRotation(ToRot);
+	//}
 }
 
 bool UIKSolver::StepSolver(UObject* WorldContextObject, USceneComponent* TargetPoint, USceneComponent* PolePoint, const FVector BasePosition, float Threshold, AActor* IgnoredActor, FVector& NewPosition, bool bDebug)

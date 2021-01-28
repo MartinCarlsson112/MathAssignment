@@ -34,63 +34,16 @@ public:
 			ComponentToSolve[i]->SetRelativeRotation(FRotator(OldRotation.Vector().X + Speed.X * Time, OldRotation.Vector().Y + Speed.Y * Time, OldRotation.Vector().Z + Speed.Z * Time ));
 		}
 	}
-
+	
 	UFUNCTION(BlueprintCallable, Category = Orbit)
-	static void OrbitSolveMultiple(TArray<UOrbitComponent*> ComponentToSolve, FVector OrbitPivot, float time)
+	static FVector SolveOrbit(FOrbitSolverData Data, FVector OrbitPivot, float Time)
 	{
-		int nSolves = ComponentToSolve.Num();
-		for (int i = 0; i < nSolves; i++)
-		{
-			if (ComponentToSolve[i] == nullptr)
-			{
-				continue;
-			}
-			float TimeInSeconds = time;
-
-
-			FVector Rate = ComponentToSolve[i]->SolverData.Rate;
-
-			float TimeX = TimeInSeconds * Rate.X;
-			float TimeY = TimeInSeconds * Rate.Y;
-			float TimeZ = TimeInSeconds * Rate.Z;
-
-			FVector Offset = ComponentToSolve[i]->SolverData.Offset;
-			FVector Radius = ComponentToSolve[i]->SolverData.Radius;
-
-			FRotator Rot = FRotator(0, FMath::Fmod(Offset.X + TimeX, 360), 0);
-
-			FRotator RotY = FRotator(0, 0, FMath::Fmod(Offset.Y + TimeY, 360));
-
-			FRotator RotZ = FRotator(FMath::Fmod(Offset.Z + TimeZ, 360), 0, 0);
-
-			FVector A = Rot.RotateVector(FVector(Radius.X, 0, 0)),
-				B = RotY.RotateVector(FVector(0, Radius.Y, 0)),
-				C = RotZ.RotateVector(FVector(0, 0, Radius.Z));
-
-			ComponentToSolve[i]->SetRelativeLocation(OrbitPivot + A + B + C, false, nullptr, ETeleportType::TeleportPhysics);
-		}
-	}
-
-
-
-	UFUNCTION(BlueprintCallable, Category = Orbit)
-		static void OrbitSolve(UOrbitComponent* ComponentToSolve, FVector OrbitPivot, float time)
-	{
-		if (ComponentToSolve == nullptr)
-		{
-			return;
-		}
-		float TimeInSeconds = time;
-
-
-		FVector Rate = ComponentToSolve->SolverData.Rate;
-
-		float TimeX = TimeInSeconds * Rate.X;
-		float TimeY = TimeInSeconds * Rate.Y;
-		float TimeZ = TimeInSeconds * Rate.Z;
-
-		FVector Offset = ComponentToSolve->SolverData.Offset;
-		FVector Radius = ComponentToSolve->SolverData.Radius;
+		FVector Rate = Data.Rate;
+		FVector Offset = Data.Offset;
+		FVector Radius = Data.Radius;
+		float TimeX = Time * Rate.X;
+		float TimeY = Time * Rate.Y;
+		float TimeZ = Time * Rate.Z;
 
 		FRotator Rot = FRotator(0, FMath::Fmod(Offset.X + TimeX, 360), 0);
 
@@ -102,6 +55,29 @@ public:
 			B = RotY.RotateVector(FVector(0, Radius.Y, 0)),
 			C = RotZ.RotateVector(FVector(0, 0, Radius.Z));
 
-		ComponentToSolve->SetRelativeLocation(OrbitPivot + A + B + C, false, nullptr, ETeleportType::TeleportPhysics);
+		return OrbitPivot + A + B + C;
+	}
+
+	UFUNCTION(BlueprintCallable, Category = Orbit)
+	static void OrbitSolveMultipleComponents(TArray<UOrbitComponent*> ComponentToSolve, FVector OrbitPivot, float Time)
+	{
+		int nSolves = ComponentToSolve.Num();
+		for (int i = 0; i < nSolves; i++)
+		{
+			OrbitSolveComponent(ComponentToSolve[i], OrbitPivot, Time);
+		}
+	}
+
+
+
+	UFUNCTION(BlueprintCallable, Category = Orbit)
+		static void OrbitSolveComponent(UOrbitComponent* ComponentToSolve, FVector OrbitPivot, float Time)
+	{
+		if (ComponentToSolve == nullptr)
+		{
+			return;
+		}
+		FVector NewPos = SolveOrbit(ComponentToSolve->SolverData, OrbitPivot, Time);
+		ComponentToSolve->SetRelativeLocation(NewPos, false, nullptr, ETeleportType::TeleportPhysics);
 	}
 };
