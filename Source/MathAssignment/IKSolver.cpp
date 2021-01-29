@@ -238,7 +238,6 @@ void UIKSolver::SolveIKChainFABRIK(const FIKChain2& IKChain, USceneComponent* Ta
 	{
 		return;
 	}
-	TArray<FTransform> ChainTransforms;
 	FVector StartPosition = IKChain.Start->GetComponentLocation();
 
 
